@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flood Monitoring Data</title>
+</head>
+<body>
+    <div style="width: 100%;">
+        <h1 style="text-align: center;">RowFlow River Level and Flow Rate</h1>
+        <form method="POST" style="display: flex; gap: 1em; align-items: center;">
+            <div>
+                <label for="station_id">Station ID:</label>
+                <input type="text" id="station_id" name="station_id"
+                       placeholder="e.g., 3400TH" value="{{ station_id if station_id else '' }}" required>
+            </div>
+            <div>
+                <label for="date">Date:</label>
+                <select id="date" name="date" required>
+                    {% for d in date_options %}
+                        <option value="{{ d }}" {% if selected_date == d %}selected{% endif %}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit">Get Data</button>
+        </form>
+
+        {% if error %}
+            <div>
+                <strong>Error!</strong>
+                <span>{{ error }}</span>
+            </div>
+        {% endif %}
+
+    {% if data %}
+        <h2>
+            Readings for Station: <span>{{ station_id }}</span> on <span>{{ selected_date }}</span>
+        </h2>
+        <div>
+            <canvas id="readingsChart" height="120"></canvas>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            // Format dateTime labels to "yyyy-mm-dd hh:mm"
+            function formatDateTime(dt) {
+                const d = new Date(dt);
+                const pad = n => n.toString().padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            }
+
+            // Prepare data for Chart.js
+            const rawData = {{ data|tojson }};
+            const rawLabels = [...new Set(rawData.map(item => item.dateTime))].sort();
+            const labels = rawLabels.map(formatDateTime);
+
+            const dataset = {
+                label: "Flow Rate (m³/s)",
+                data: rawLabels.map(label => {
+                    const found = rawData.find(item => item.dateTime === label);
+                    return found ? found.value : null;
+                }),
+                fill: false,
+                borderColor: 'rgba(37, 99, 235, 1)',
+                backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                tension: 0.2
+            };
+
+            new Chart(document.getElementById('readingsChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [dataset]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Time' } }
+                    }
+                }
+            });
+        </script>
+    {% elif not error %}
+        <h2>No data available for the selected station and date.</h2>
+    {% else %}
+        {% if not error %}
+            <p>Enter a Station ID and Date above to fetch flood monitoring data.</p>
+        {% endif %}
+    {% endif %}
+
+    </div>
+    <div>
+        <p>This uses <a href="https://environment.data.gov.uk/flood-monitoring/doc/reference.html">Environment Agency flood and river level data from the real-time data API (Beta)</a></p>
+    </div>
+</body>
+</html>

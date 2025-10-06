@@ -1,0 +1,6 @@
+
+variables.sh
+infrastructure/.terraform
+infrastructure/.terraform.lock.hcl
+scripts/build/output-files/*.tfplan
+application/rowcache/.env
